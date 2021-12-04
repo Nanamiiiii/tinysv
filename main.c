@@ -17,6 +17,9 @@
 #define DEFAULT_PORT 5000
 
 #define QUEUE_SIZE 1024
+#define MAX_PROC 5
+
+volatile sig_atomic_t sigint_flg = 0;
 
 void print_AA() {
     fprintf(stdout, "---------------------------\n");
@@ -88,6 +91,11 @@ int open_svsock(char* sv_addr, int sv_port) {
     return sv_sock;
 }
 
+/* Shutting down */
+void interruption_handler(int sig, siginfo_t *info, void *ctx) {
+    sigint_flg = 1;
+}
+
 int main(int argc, char** argv) {
     char sv_addr[16];
     int sv_port = DEFAULT_PORT;
@@ -142,11 +150,22 @@ int main(int argc, char** argv) {
     if((sv_sock = open_svsock(sv_addr, sv_port)) < 0)
         logger(stderr, "[Error] cannot open socket.");
 
-    logger(stdout, "[Info] listening %s:%d\n", sv_addr, sv_port);
+    logger(stdout, "[Info] listening %s:%d", sv_addr, sv_port);
 
+    /* Handle signals */
     signal(SIGPIPE, SIG_IGN);
-    
+    struct sigaction sigact_int;
+    memset(&sigact_int, 0, sizeof(sigact_int));
+    sigact_int.sa_sigaction = interruption_handler;
+    sigact_int.sa_flags = SA_SIGINFO;
+    if(sigaction(SIGINT, &sigact_int, NULL) < 0) {
+        logger(stderr, "[Error] something went wrong.");
+        exit(1);
+    }
 
+    while(!sigint_flg);
 
+    fprintf(stdout, "\n");
+    logger(stdout, "[Info] shutting down server...", sv_addr, sv_port);
     close(sv_sock);
 }
