@@ -1,8 +1,11 @@
-#include <stdio.h>
+/* main.c */
+
+#include "logger.h"
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 #include <getopt.h>
+#include <signal.h>
 #include <sys/socket.h>
 #include <netinet/tcp.h>
 #include <netinet/in.h>
@@ -13,9 +16,22 @@
 #define DEFAULT_ADDR "0.0.0.0"
 #define DEFAULT_PORT 5000
 
+#define QUEUE_SIZE 1024
+
+void print_AA() {
+    fprintf(stdout, "---------------------------\n");
+    fprintf(stdout, "   __  _\n");
+    fprintf(stdout, "  / /_(_)__  __ ______  __\n");
+    fprintf(stdout, " / __/ / _ \\/ // (_-< |/ /\n");
+    fprintf(stdout, " \\__/_/_//_/\\_, /___/___/\n");
+    fprintf(stdout, "           /___/\n");
+    fprintf(stdout, "---------------------------\n");
+    fprintf(stdout, "Welcome to tiny webserver created by Nanamiiiii!\n\n");
+}
+
 void print_version(FILE *fp) {
     fprintf(fp, "tinysv %s\n", VERSION);
-    fprintf(fp, "\tA little server application created by Nanamiiiii\n\n");
+    fprintf(fp, "\tA tiny server application created by Nanamiiiii\n\n");
 }
 
 void print_usage(FILE *fp) {
@@ -33,12 +49,51 @@ void print_usage(FILE *fp) {
     fprintf(fp, "\t\tPrint version info.\n\n");
 }
 
+/* Create and Listen socket */
+int open_svsock(char* sv_addr, int sv_port) {
+    print_AA();
+    int sv_sock;
+    int optval = 1;
+    struct sockaddr_in sv_sock_addr;
+    if ((sv_sock = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
+        
+        return -1;
+    }
+
+    if (setsockopt(sv_sock, SOL_SOCKET, SO_REUSEADDR, (const void*) &optval, sizeof(int)) < 0) {
+        close(sv_sock);
+        return -1;
+    }
+
+    if (setsockopt(sv_sock, 6, TCP_CORK, (const void*) &optval, sizeof(int)) < 0) {
+        close(sv_sock);
+        return -1;
+    }
+
+    memset(&sv_sock_addr, 0, sizeof(struct sockaddr_in));
+    sv_sock_addr.sin_family = AF_INET;
+    sv_sock_addr.sin_port = htons((unsigned short) sv_port);
+    sv_sock_addr.sin_addr.s_addr = inet_addr(sv_addr);
+
+    if (bind(sv_sock, (const struct sockaddr*) &sv_sock_addr, sizeof(sv_sock_addr)) < 0) {
+        close(sv_sock);
+        return -1;
+    }
+
+    if (listen(sv_sock, QUEUE_SIZE) < 0) {
+        close(sv_sock);
+        return -1;
+    }
+
+    return sv_sock;
+}
+
 int main(int argc, char** argv) {
     char sv_addr[16];
     int sv_port = DEFAULT_PORT;
     strcpy(sv_addr, DEFAULT_ADDR);
 
-    /* Analyzing Option Arguments */
+    /* Analyzing option arguments */
     int opt;
     int debug_flg = 0;
     const char* optstr = "s:p:hdv";
@@ -73,47 +128,25 @@ int main(int argc, char** argv) {
                 print_version(stdout);
                 return 0;
             default:
-                fprintf(stderr, "[Error] Invalid Argument.\n");
+                logger(stderr, "[Error] Invalid Argument.");
                 print_usage(stderr);
                 return -1;
         }
     }
 
     if(debug_flg)
-        fprintf(stdout, "[Info] Runnning in debug mode.\n");
-
-    fprintf(stdout, "[Info] Server %s:%d\n", sv_addr, sv_port);
+        logger(stdout, "[Info] Runnning in debug mode.");
 
     /* Create socket */
-    int sv_sock, cli_sock;
-    int optval = 1;
-    struct sockaddr_in sv_sock_addr;
-    if ((sv_sock = socket(PF_INET, SOCK_STREAM, 0)) < 0) {
-        fprintf(stderr, "[Error] socket creation failed.\n");
-        return -1;
-    }
+    int sv_sock;
+    if((sv_sock = open_svsock(sv_addr, sv_port)) < 0)
+        logger(stderr, "[Error] cannot open socket.");
 
-    if (setsockopt(sv_sock, SOL_SOCKET, SO_REUSEADDR, (const void*) &optval, sizeof(int)) < 0) {
-        fprintf(stderr, "[Error] socket creation failed.\n");
-        close(sv_sock);
-        return -1;
-    }
+    logger(stdout, "[Info] listening %s:%d\n", sv_addr, sv_port);
 
-    if (setsockopt(sv_sock, 6, TCP_CORK, (const void*) &optval, sizeof(int)) < 0) {
-        fprintf(stderr, "[Error] socket creation failed.\n");
-        close(sv_sock);
-        return -1;
-    }
+    signal(SIGPIPE, SIG_IGN);
+    
 
-    memset(&sv_sock_addr, 0, sizeof(struct sockaddr_in));
-    sv_sock_addr.sin_family = PF_INET;
-    sv_sock_addr.sin_port = htons((unsigned short) sv_port);
-    sv_sock_addr.sin_addr.s_addr = inet_addr(sv_addr);
 
-    if(bind(sv_sock, (const struct sockaddr*) &sv_sock_addr, sizeof(sv_sock_addr)) < 0) {
-        fprintf(stderr, "[Error] socket binding failed.\n");
-        close(sv_sock);
-        return -1;
-    }
-
+    close(sv_sock);
 }
