@@ -101,13 +101,19 @@ int main(int argc, char** argv) {
     int sv_port = DEFAULT_PORT;
     strcpy(sv_addr, DEFAULT_ADDR);
 
+    struct sockaddr_in cli_sock_addr;
+    uint32_t cli_addr_len;
+    int cli_sock;
+
     /* Analyzing option arguments */
     int opt;
     int debug_flg = 0;
-    const char* optstr = "s:p:hdv";
+    int proc_num = MAX_PROC;
+    const char* optstr = "s:p:t:hdv";
     const struct option longopts[] = {
         {"server", required_argument, 0, 's'},
         {"port", required_argument, 0, 'p'},
+        {"thread", required_argument, 0, 't'},
         {"help", no_argument, 0, 'h'},
         {"debug", no_argument, &debug_flg, 1},
         {"version", no_argument, 0, 'v'},
@@ -124,6 +130,9 @@ int main(int argc, char** argv) {
                 break;
             case 'p':
                 sv_port = atoi(optarg);
+                break;
+            case 't':
+                proc_num = atoi(optarg);
                 break;
             case 'h':
                 print_version(stdout);
@@ -143,12 +152,14 @@ int main(int argc, char** argv) {
     }
 
     if(debug_flg)
-        logger(stdout, "[Info] Runnning in debug mode.");
+        logger(stdout, "[Debug] Runnning in debug mode.");
 
     /* Create socket */
     int sv_sock;
-    if((sv_sock = open_svsock(sv_addr, sv_port)) < 0)
+    if((sv_sock = open_svsock(sv_addr, sv_port)) < 0) {
         logger(stderr, "[Error] cannot open socket.");
+        return -1;
+    }
 
     logger(stdout, "[Info] listening %s:%d", sv_addr, sv_port);
 
@@ -160,12 +171,36 @@ int main(int argc, char** argv) {
     sigact_int.sa_flags = SA_SIGINFO;
     if(sigaction(SIGINT, &sigact_int, NULL) < 0) {
         logger(stderr, "[Error] something went wrong.");
-        exit(1);
+        exit(-1);
     }
 
-    while(!sigint_flg);
+    logger(stdout, "[Info] running %d process", proc_num);
 
-    fprintf(stdout, "\n");
-    logger(stdout, "[Info] shutting down server...", sv_addr, sv_port);
+    int pid, i;
+    for (i = 0; i < proc_num; i++) {
+        pid = fork();
+        if (pid < 0) { // fork error
+            logger(stderr, "[Error] process forking failed");
+            return -1;
+        } else if (pid > 0) { // parent process (nothing to do)
+            logger(stdout, "[Info] process %d PID: %d", i, pid);
+        } else {
+            while (!sigint_flg) { // child process (waiting connection)
+
+            }
+            if (debug_flg) {
+                logger(stdout, "[Debug] killed process %d", i);
+            }
+            close(sv_sock);
+            return 0;
+        }
+    }
+
     close(sv_sock);
+
+    while (!sigint_flg);
+
+    if (pid != 0) {
+        logger(stdout, "[Info] shutting down server...");
+    }
 }
