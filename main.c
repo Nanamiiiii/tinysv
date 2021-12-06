@@ -1,11 +1,13 @@
 /* main.c */
 
 #include "logger.h"
+#include "hashmap.h"
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 #include <getopt.h>
 #include <signal.h>
+#include <pthread.h>
 #include <sys/socket.h>
 #include <netinet/tcp.h>
 #include <netinet/in.h>
@@ -17,10 +19,60 @@
 #define DEFAULT_PORT 5000
 
 #define QUEUE_SIZE 1024
-#define MAX_PROC 5
+#define BUFFER_SIZE 1024
+#define MAX_THREAD 10
 
-volatile sig_atomic_t sigint_flg = 0;
+volatile int interrupted_flag = 0;
+int debug_flg = 0;
 
+static _Atomic unsigned int client_cnt = 0;
+pthread_mutex_t client_mutex = PTHREAD_MUTEX_INITIALIZER;
+
+typedef struct _cli_thread {
+
+} CLI_THREAD;
+
+typedef struct _thread_args {
+    int cli_sock;
+} THREAD_ARGS;
+
+typedef struct _mime_type {
+    const char* ext;
+    const char* mime;
+} MIME_TYPE;
+
+MIME_TYPE mime[] = {
+    { ".html", "text/html" },
+    { ".htm", "text/htm" },
+    { ".js", "application/javascript" },
+    { ".css", "text/css" },
+    { ".jpg", "image/jpeg" },
+    { ".jpeg", "image/jpeg" },
+    { ".png", "image/png" },
+    { ".ico", "image/x-icon" },
+    { NULL, NULL },
+};
+
+typedef enum _http_method {
+    GET,
+    POST,
+    PUT,
+    DELETE,
+    PATCH,
+    CONNECT,
+    HEAD,
+    OPTIONS,
+    TRACE,
+} HTTP_METHOD;
+
+typedef struct _http_request {
+    HTTP_METHOD request_method;
+    char* path;
+    HashMap header;
+    char* body;
+};
+
+/* output functions */
 void print_AA() {
     fprintf(stdout, "---------------------------\n");
     fprintf(stdout, "   __  _\n");
@@ -46,10 +98,27 @@ void print_usage(FILE *fp) {
     fprintf(fp, "\t\tOverride default server address (0.0.0.0).\n\n");
     fprintf(fp, "\t-p, --port <PORT>\n");
     fprintf(fp, "\t\tOverride default PORT number (5000).\n\n");
+    fprintf(fp, "\t-t, --thread <number of process>\n");
+    fprintf(fp, "\t\tOverride the number of thread runs. (5)\n\n");
     fprintf(fp, "\t-h, --help\n");
     fprintf(fp, "\t\tPrint help message.\n\n");
     fprintf(fp, "\t-v, --version\n");
     fprintf(fp, "\t\tPrint version info.\n\n");
+}
+
+char* fmt_client_addr(struct sockaddr_in sock_addr){
+    char buf[16];
+    sprintf(buf, "%d.%d.%d.%d", 
+        sock_addr.sin_addr.s_addr & 0xff,
+        (sock_addr.sin_addr.s_addr & 0xff00) >> 8,
+        (sock_addr.sin_addr.s_addr & 0xff0000) >> 16,
+        (sock_addr.sin_addr.s_addr & 0xff000000) >> 24);
+    return buf;
+}
+
+/* keyboard interruption */
+void interruption_handler(int sig, siginfo_t *info, void *ctx) {
+    interrupted_flag = 1;
 }
 
 /* Create and Listen socket */
@@ -91,9 +160,26 @@ int open_svsock(char* sv_addr, int sv_port) {
     return sv_sock;
 }
 
-/* Shutting down */
-void interruption_handler(int sig, siginfo_t *info, void *ctx) {
-    sigint_flg = 1;
+/* recieving data */
+int recieve_data (int cli_sock, char* buf, uint32_t buf_size) {
+    return recv(cli_sock, buf, buf_size, 0);
+}
+
+/* processing request */
+void* process_request(void* args) {
+    if (debug_flg) logger(stdout, "connection accepted.");
+
+    int recieved;
+    char* recieved_buf = (char*) malloc((size_t) 8 * BUFFER_SIZE * sizeof(char));
+    char* response_buf = (char*) malloc((size_t) 8 * BUFFER_SIZE * sizeof(char));
+    char request_method[BUFFER_SIZE];
+    char path[BUFFER_SIZE];
+    char header[BUFFER_SIZE];
+    char body[BUFFER_SIZE];
+    uint16_t status;
+    uint32_t filesize;
+
+
 }
 
 int main(int argc, char** argv) {
@@ -102,13 +188,13 @@ int main(int argc, char** argv) {
     strcpy(sv_addr, DEFAULT_ADDR);
 
     struct sockaddr_in cli_sock_addr;
-    uint32_t cli_addr_len;
+    uint16_t cli_addr_len = sizeof cli_sock_addr;
     int cli_sock;
+    pthread_t thread_id;
 
     /* Analyzing option arguments */
     int opt;
-    int debug_flg = 0;
-    int proc_num = MAX_PROC;
+    int proc_num = MAX_THREAD;
     const char* optstr = "s:p:t:hdv";
     const struct option longopts[] = {
         {"server", required_argument, 0, 's'},
@@ -174,33 +260,19 @@ int main(int argc, char** argv) {
         exit(-1);
     }
 
-    logger(stdout, "[Info] running %d process", proc_num);
+    logger(stdout, "[Info] max thread: %d", proc_num);
 
-    int pid, i;
-    for (i = 0; i < proc_num; i++) {
-        pid = fork();
-        if (pid < 0) { // fork error
-            logger(stderr, "[Error] process forking failed");
-            return -1;
-        } else if (pid > 0) { // parent process (nothing to do)
-            logger(stdout, "[Info] process %d PID: %d", i, pid);
-        } else {
-            while (!sigint_flg) { // child process (waiting connection)
-
-            }
-            if (debug_flg) {
-                logger(stdout, "[Debug] killed process %d", i);
-            }
-            close(sv_sock);
-            return 0;
+    // TODO: accepting and thread creation
+    while (!interrupted_flag) {
+        cli_sock = accept(sv_sock, (struct sockaddr *) &cli_sock_addr, &cli_addr_len);
+        if (client_cnt == proc_num) { // Threads limitation
+            logger(stdout, "Client limit. Access rejected. [from] %s:%d", fmt_client_addr(cli_sock_addr), cli_sock_addr.sin_port);
+            close(cli_sock);
+            continue;
         }
     }
 
+    // TODO: exiting process
+
     close(sv_sock);
-
-    while (!sigint_flg);
-
-    if (pid != 0) {
-        logger(stdout, "[Info] shutting down server...");
-    }
 }
