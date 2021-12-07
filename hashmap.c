@@ -1,3 +1,5 @@
+/* hashmap.c */
+
 #include "hashmap.h"
 
 int gen_hash(HashMap* hashmap, const char* key) {

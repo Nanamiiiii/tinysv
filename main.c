@@ -1,45 +1,13 @@
 /* main.c */
 
 #include "logger.h"
-#include "hashmap.h"
-#include <stdlib.h>
-#include <string.h>
-#include <unistd.h>
-#include <getopt.h>
-#include <signal.h>
-#include <pthread.h>
-#include <sys/socket.h>
-#include <netinet/tcp.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
-
-#define VERSION "0.0.1"
-
-#define DEFAULT_ADDR "0.0.0.0"
-#define DEFAULT_PORT 5000
-
-#define QUEUE_SIZE 1024
-#define BUFFER_SIZE 1024
-#define MAX_THREAD 10
+#include "main.h"
 
 volatile int interrupted_flag = 0;
 int debug_flg = 0;
 
 static _Atomic unsigned int client_cnt = 0;
 pthread_mutex_t client_mutex = PTHREAD_MUTEX_INITIALIZER;
-
-typedef struct _cli_thread {
-
-} CLI_THREAD;
-
-typedef struct _thread_args {
-    int cli_sock;
-} THREAD_ARGS;
-
-typedef struct _mime_type {
-    const char* ext;
-    const char* mime;
-} MIME_TYPE;
 
 MIME_TYPE mime[] = {
     { ".html", "text/html" },
@@ -53,23 +21,74 @@ MIME_TYPE mime[] = {
     { NULL, NULL },
 };
 
-typedef enum _http_method {
-    GET,
-    POST,
-    PUT,
-    DELETE,
-    PATCH,
-    CONNECT,
-    HEAD,
-    OPTIONS,
-    TRACE,
-} HTTP_METHOD;
+METHOD_MAP method_map[] = {
+    { "GET", GET },
+    { "POST", POST },
+    { "PUT", PUT },
+    { "DELETE", DELETE },
+    { "PATCH", PATCH },
+    { "CONNECT", CONNECT },
+    { "HEAD", HEAD },
+    { "OPTIONS", OPTIONS },
+    { "TRACE", TRACE },
+    { NULL, UNDEFINED },
+};
 
-typedef struct _http_request {
-    HTTP_METHOD request_method;
-    char* path;
-    HashMap header;
-    char* body;
+HTTP_STATUS status_map[] = {
+    { 100, "Continue" },
+    { 101, "Switching Protocols" },
+    { 103, "Early Hints" },
+    { 200, "OK" },
+    { 201, "Created" },
+    { 202, "Accepted" },
+    { 203, "Non-Authoritative Information" },
+    { 204, "No Content" },
+    { 205, "Reset Content" },
+    { 206, "Partial Content" },
+    { 300, "Multiple Choices" },
+    { 301, "Moved Permanently" },
+    { 302, "Found" },
+    { 303, "See Other" },
+    { 304, "Not Modified" },
+    { 307, "Temporary Redirect" },
+    { 308, "Permanent Redirect" },
+    { 400, "Bad Request" },
+    { 401, "Unauthorized" },
+    { 402, "Payment Required" },
+    { 403, "Forbidden" },
+    { 404, "Not Found" },
+    { 405, "Method Not Allowed" },
+    { 406, "Not Acceptable" },
+    { 407, "Proxy Authentication Required" },
+    { 408, "Request Timeout" },
+    { 409, "Conflict" },
+    { 410, "Gone" },
+    { 411, "Length Required" },
+    { 412, "Precondition Failed" },
+    { 413, "Payload Too Large" },
+    { 414, "URI Too Long" },
+    { 415, "Unsupported Media Type" },
+    { 416, "Range Not Satisfiable" },
+    { 417, "Expectation Failed" },
+    { 418, "I'm a teapot" },
+    { 422, "Unprocessable Entity" },
+    { 425, "Too Early" },
+    { 426, "Upgrade Required" },
+    { 428, "Precondition Required" },
+    { 429, "Too Many Request" },
+    { 431, "Request Header Fields Too Large" },
+    { 451, "Unavailable For Legal Reasons" },
+    { 500, "Internal Server Error" },
+    { 501, "Not Implemented" },
+    { 502, "Bad Gateway" },
+    { 503, "Service Unavailable" },
+    { 504, "Gateway Timeout" },
+    { 505, "HTTP Version Not Supported" },
+    { 506, "Variant Also Negotiates" },
+    { 507, "Insufficient Storage" },
+    { 508, "Loop Detected" },
+    { 510, "Not Extended" },
+    { 511, "Network Authentication Required" },
 };
 
 /* output functions */
@@ -107,7 +126,7 @@ void print_usage(FILE *fp) {
 }
 
 char* fmt_client_addr(struct sockaddr_in sock_addr){
-    char buf[16];
+    char* buf = (char*) malloc((size_t) 16 * sizeof(char));
     sprintf(buf, "%d.%d.%d.%d", 
         sock_addr.sin_addr.s_addr & 0xff,
         (sock_addr.sin_addr.s_addr & 0xff00) >> 8,
@@ -160,35 +179,80 @@ int open_svsock(char* sv_addr, int sv_port) {
     return sv_sock;
 }
 
+/* fetch method */
+HTTP_METHOD fetch_method(const char* str) {
+    int i;
+    for (i = 0; method_map[i].str != NULL; i++) {
+        if (!strcmp(str, method_map[i].str)) {
+            return method_map[i].method;
+        }
+    }
+    return method_map[i].method;
+}
+
+/* parse request */
+void parse_http_request(HTTP_REQUEST* request, char* buf) {
+    char *req_line, *header, *body, *tmp;
+    char *method;
+
+    req_line = strtok(buf, LF); // Read firstline
+    tmp = strtok(NULL, LF);
+    header = (char *) malloc((size_t) 4 * BUFFER_SIZE * sizeof(char));
+    while (tmp[0] != '\r') { // roop for request header
+        sprintf(header, "%s%s", header, tmp);
+        tmp = strtok(NULL, LF);
+    }
+    body = strtok(NULL, "\0");
+
+    request->request_method = fetch_method(strtok(req_line, " "));
+    request->path = strtok(NULL, " ");
+
+    init_map(&request->header, 32);
+    char *key, *val;
+    key = strtok(header, ":");
+    do {
+        val = strtok(NULL, LF);
+        store(&request->header, key, val);
+    } while ((key = strtok(NULL, ":")) != NULL);
+
+    strcpy(request->body, body);
+}
+
 /* recieving data */
-int recieve_data (int cli_sock, char* buf, uint32_t buf_size) {
-    return recv(cli_sock, buf, buf_size, 0);
+HTTP_REQUEST recieve_data (int cli_sock, char* buf, u_int32_t buf_size) {
+    HTTP_REQUEST request;
+    int recieved = recv(cli_sock, buf, buf_size, 0);
+    if (recieved < 0) {
+        logger(stderr, "[Error] failed data recieving.");
+        return request;
+    }
+    if (debug_flg)
+        logger(stdout, "[Debug] recieved request\n%s", buf);
+    
+    parse_http_request(&request, buf);
+    return request;
 }
 
 /* processing request */
 void* process_request(void* args) {
-    if (debug_flg) logger(stdout, "connection accepted.");
+    if (debug_flg) logger(stdout, "[Info] connection accepted.");
 
-    int recieved;
     char* recieved_buf = (char*) malloc((size_t) 8 * BUFFER_SIZE * sizeof(char));
     char* response_buf = (char*) malloc((size_t) 8 * BUFFER_SIZE * sizeof(char));
-    char request_method[BUFFER_SIZE];
-    char path[BUFFER_SIZE];
-    char header[BUFFER_SIZE];
-    char body[BUFFER_SIZE];
-    uint16_t status;
-    uint32_t filesize;
+    HTTP_REQUEST request;
+    request = recieve_data(((THREAD_ARGS *) args)->cli_sock, recieved_buf, 8 * BUFFER_SIZE);
 
-
+    
 }
 
+/* main function */
 int main(int argc, char** argv) {
     char sv_addr[16];
     int sv_port = DEFAULT_PORT;
     strcpy(sv_addr, DEFAULT_ADDR);
 
     struct sockaddr_in cli_sock_addr;
-    uint16_t cli_addr_len = sizeof cli_sock_addr;
+    u_int16_t cli_addr_len = sizeof cli_sock_addr;
     int cli_sock;
     pthread_t thread_id;
 
@@ -264,7 +328,7 @@ int main(int argc, char** argv) {
 
     // TODO: accepting and thread creation
     while (!interrupted_flag) {
-        cli_sock = accept(sv_sock, (struct sockaddr *) &cli_sock_addr, &cli_addr_len);
+        cli_sock = accept(sv_sock, (struct sockaddr *) &cli_sock_addr, (socklen_t*) &cli_addr_len);
         if (client_cnt == proc_num) { // Threads limitation
             logger(stdout, "Client limit. Access rejected. [from] %s:%d", fmt_client_addr(cli_sock_addr), cli_sock_addr.sin_port);
             close(cli_sock);
