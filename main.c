@@ -1,6 +1,8 @@
 /* main.c */
 
 #include "logger.h"
+#include "module.h"
+#include "config.h"
 #include "main.h"
 
 volatile int interrupted_flag = 0;
@@ -193,7 +195,6 @@ HTTP_METHOD fetch_method(const char* str) {
 /* parse request */
 void parse_http_request(HTTP_REQUEST* request, char* buf) {
     char *req_line, *header, *body, *tmp;
-    char *method;
 
     req_line = strtok(buf, LF); // Read firstline
     tmp = strtok(NULL, LF);
@@ -211,7 +212,7 @@ void parse_http_request(HTTP_REQUEST* request, char* buf) {
     char *key, *val;
     key = strtok(header, ":");
     do {
-        val = strtok(NULL, LF);
+        val = strtok(NULL, CR);
         store(&request->header, key, val);
     } while ((key = strtok(NULL, ":")) != NULL);
 
@@ -269,6 +270,17 @@ int main(int argc, char** argv) {
         {"version", no_argument, 0, 'v'},
         {0, 0, 0, 0},
     };
+
+    /* TODO: load configuration */
+    CONFIG config;
+    config.module_conf = (MODULE_C *) malloc((size_t) MODULE_N * sizeof(MODULE_C));
+    config.file_handler = (FILE_HANDLER *) malloc((size_t) MODULE_N * sizeof(FILE_HANDLER));
+    config.route_handler = (ROUTE_HANDLER *) malloc((size_t) MODULE_N * sizeof(ROUTE_HANDLER));
+    config.mod_n = 0;
+    config.fh_n = 0;
+    config.rh_n = 0;
+    parse_config(&config);
+
     int longindex = 0;
     opterr = 0;
     while ((opt = getopt_long(argc, argv, optstr, longopts, &longindex)) != -1) {
@@ -303,6 +315,8 @@ int main(int argc, char** argv) {
 
     if(debug_flg)
         logger(stdout, "[Debug] Runnning in debug mode.");
+
+    /* TODO: load modules */
 
     /* Create socket */
     int sv_sock;

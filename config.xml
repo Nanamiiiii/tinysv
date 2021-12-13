@@ -1,0 +1,23 @@
+<Server>
+    <Address>0.0.0.0</Address>
+    <Port>5000</Port>
+    <Root>./www</Root>
+    <RootFile>index.html</RootFile>
+</Server>
+
+<Modules>
+    <Module>
+        <Name>default</Name>
+        <Object>default_conf.so</Object>
+    </Module>
+</Modules>
+
+<FileHandle>
+    <Handler>
+        <Name>default</Name>
+        <Ext>.html</Ext>
+    </Handler>
+</FileHandle>
+
+<RouteHandle>
+</RouteHandle>
