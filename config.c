@@ -166,6 +166,7 @@ void parse_config (CONFIG *config) {
     char *buf = (char *) malloc((size_t) CONF_BUF * sizeof(char));
 
     ssize_t len;
+    
     do {
         len = read(fd, buf, CONF_BUF);
         if (len < 0) {
@@ -179,6 +180,7 @@ void parse_config (CONFIG *config) {
         }
     } while (!(len < CONF_BUF));
 
+    close(fd);
     XML_ParserFree(parser);
     return;
 }
