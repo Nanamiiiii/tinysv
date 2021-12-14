@@ -144,7 +144,6 @@ void interruption_handler(int sig, siginfo_t *info, void *ctx) {
 
 /* Create and Listen socket */
 int open_svsock(char* sv_addr, int sv_port) {
-    print_AA();
     int sv_sock;
     int optval = 1;
     struct sockaddr_in sv_sock_addr;
@@ -256,12 +255,13 @@ int main(int argc, char** argv) {
     int cli_sock;
     pthread_t thread_id;
 
+    print_AA();
+
     /* load configuration */
     CONFIG config;
     config.module_conf = (MODULE_C *) malloc((size_t) MODULE_N * sizeof(MODULE_C));
     config.file_handler = (FILE_HANDLER *) malloc((size_t) MODULE_N * sizeof(FILE_HANDLER));
     config.route_handler = (ROUTE_HANDLER *) malloc((size_t) MODULE_N * sizeof(ROUTE_HANDLER));
-    /* TODO: allocate some string mem */
     config.mod_n = 0;
     config.fh_n = 0;
     config.rh_n = 0;
@@ -317,8 +317,15 @@ int main(int argc, char** argv) {
         }
     }
 
-    if(debug_flg)
+    if(debug_flg) {
         logger(stdout, "[Debug] Runnning in debug mode.");
+        logger(stdout, "[Debug] show configs");
+        logger(stdout, "Server Addr: %s", sv_addr);
+        logger(stdout, "Server Port: %d", sv_port);
+        logger(stdout, "Module: %d", config.mod_n);
+        logger(stdout, "File Handler: %d", config.fh_n);
+        logger(stdout, "ROUTE Handler: %d", config.rh_n);
+    }
 
     /* TODO: load modules */
 

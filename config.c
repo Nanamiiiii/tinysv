@@ -15,7 +15,7 @@ static void XMLCALL startElement(void *user_data, const XML_Char *name, const XM
         case INIT:
             if (!strcmp(name, "Server")) current_tag = SERVER;
             else if (!strcmp(name, "Modules")) current_tag = MODULES;
-            else if (!strcmp(name, "FileHandler")) current_tag = FILEHANDLE;
+            else if (!strcmp(name, "FileHandle")) current_tag = FILEHANDLE;
             else if (!strcmp(name, "RouteHandle")) current_tag = ROUTEHANDLE;
             break;
         case SERVER:
