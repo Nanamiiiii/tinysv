@@ -5,8 +5,8 @@
 
 #include "module.h"
 
-/* Entry point: tiny_main */
+/* Entry point: __handler */
 /* @ctx: request context  */
-void tiny_main(CTX* ctx) {
+void __handler(CTX* ctx) {
     printf("Test Mod.\n");
 }

@@ -6,7 +6,7 @@
 #include "hashmap.h"
 #include "config.h"
 
-#define MODULE_ENTRY "tiny_main"
+#define MODULE_ENTRY "__handler"
 #define MOD_PATH_PREFIX "./modules/"
 #define MODULE_N 32
 

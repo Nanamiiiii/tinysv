@@ -1,8 +1,5 @@
 /* main.c */
 
-#include "logger.h"
-#include "module.h"
-#include "config.h"
 #include "main.h"
 
 volatile int interrupted_flag = 0;
@@ -180,6 +177,42 @@ int open_svsock(char* sv_addr, int sv_port) {
     return sv_sock;
 }
 
+/* mapping file handler */
+void map_file_handler(CONFIG* config, HashMap_int* fh_map) {
+    int i, j;
+    for (i = 0; i < config->fh_n; i++) {
+        for (j = 0; j < config->mod_n; j++) {
+            if (!strcmp(config->file_handler[i].module_name, config->module_conf[j].name)) break;
+        }
+        if (j == config->fh_n) {
+            logger(stderr, "[Error] cannot find module");
+            exit(1);
+        }
+        store_int(fh_map, config->file_handler[i].ext, j);
+        if (debug_flg) {
+            logger(stdout, "[Debug] mapping %s -> %s", config->file_handler[i].ext, config->file_handler[i].module_name);
+        }
+    }
+}
+
+/* mapping route handler */
+void map_route_handler(CONFIG* config, HashMap_int* rh_map) {
+    int i, j;
+    for (i = 0; i < config->rh_n; i++) {
+        for (j = 0; j < config->mod_n; j++) {
+            if (!strcmp(config->route_handler[i].module_name, config->module_conf[j].name)) break;
+        }
+        if (j == config->rh_n) {
+            logger(stderr, "[Error] cannot find module");
+            exit(1);
+        }
+        store_int(rh_map, config->route_handler[i].route, j);
+        if (debug_flg) {
+            logger(stdout, "[Debug] mapping %s -> %s", config->route_handler[i].route, config->route_handler[i].module_name);
+        }
+    }
+}
+
 /* fetch method */
 HTTP_METHOD fetch_method(const char* str) {
     int i;
@@ -330,10 +363,13 @@ int main(int argc, char** argv) {
     /* load modules */
     load_modules(config.module_conf, config.mod_n);
 
-    (*(void (*)(CTX*))config.module_conf[0].entry_handle)(NULL);
-    (*(void (*)(CTX*))config.module_conf[1].entry_handle)(NULL);
-
-    /* TODO: mapping handler */
+    /* mapping handler */
+    HashMap_int fh_map;
+    HashMap_int rh_map;
+    init_map_int(&fh_map, MODULE_N);
+    init_map_int(&rh_map, MODULE_N);
+    map_file_handler(&config, &fh_map);
+    map_route_handler(&config, &rh_map);
 
     /* Create socket */
     int sv_sock;

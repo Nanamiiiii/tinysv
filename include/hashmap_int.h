@@ -9,23 +9,23 @@
 
 #define KEY_LENGTH 128
 
-typedef int Value;
+typedef int Value_int;
 
-typedef struct _data {
+typedef struct _data_int {
     char key[KEY_LENGTH];
-    Value val;
-    struct _data* next;
-} Data;
+    Value_int val;
+    struct _data_int* next;
+} Data_int;
 
-typedef struct _hashmap {
-    Data** hash_table;
+typedef struct _hashmap_int {
+    Data_int** hash_table;
     u_int32_t size;
     u_int32_t amount;
-} HashMap;
+} HashMap_int;
 
-int gen_hash_int(HashMap* hashmap, const char* key);
-void init_map_int(HashMap* hashmap, u_int32_t size);
-void store_int(HashMap* hashmap, const char* key, Value val);
-Value *get_int(HashMap* hashmap, const char* key);
+int gen_hash_int(HashMap_int* hashmap, const char* key);
+void init_map_int(HashMap_int* hashmap, u_int32_t size);
+void store_int(HashMap_int* hashmap, const char* key, Value_int val);
+Value_int *get_int(HashMap_int* hashmap, const char* key);
 
 #endif

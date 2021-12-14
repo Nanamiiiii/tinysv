@@ -3,7 +3,7 @@
 #include "hashmap_int.h"
 
 int main(void) {
-    HashMap hashmap;
+    HashMap_int hashmap;
     init_map_int(&hashmap, 32);
     int test_val1 = 100;
     int test_val2 = 114514;
