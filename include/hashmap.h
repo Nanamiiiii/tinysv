@@ -8,12 +8,13 @@
 #include <string.h>
 
 #define KEY_LENGTH 128
+#define VAL_LENGTH 128
 
-typedef char* Value;
+typedef char Value;
 
 typedef struct _data {
     char key[KEY_LENGTH];
-    Value val;
+    Value val[VAL_LENGTH];
     struct _data* next;
 } Data;
 

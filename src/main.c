@@ -327,7 +327,13 @@ int main(int argc, char** argv) {
         logger(stdout, "Route Handler: %d", config.rh_n);
     }
 
-    /* TODO: load modules */
+    /* load modules */
+    load_modules(config.module_conf, config.mod_n);
+
+    (*(void (*)(CTX*))config.module_conf[0].entry_handle)(NULL);
+    (*(void (*)(CTX*))config.module_conf[1].entry_handle)(NULL);
+
+    /* TODO: mapping handler */
 
     /* Create socket */
     int sv_sock;

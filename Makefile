@@ -1,19 +1,24 @@
 # Makefile
+MAKE = make
 
-CC = gcc
-CFLAGS = -O2 -Wall
-LDFLAGS = -lpthread -lexpat
-TARGET = tinysv
-OBJS = main.o logger.o hashmap.o config.o
-SRCS = $(OBJS:.o=.c)
+.PHONY: all
+all: 
+	$(MAKE) tinysv
+	$(MAKE) modules
 
-all: $(OBJS) $(TARGET)
+tinysv: src/Makefile
+	$(MAKE) -C src
 
-$(TARGET): $(OBJS)
-	$(CC) -o $@ $^ $(LDFLAGS)
+.PHONY: modules
+modules: modules/Makefile
+	$(MAKE) -C modules
 
-$(OBJS): $(SRCS)
-	$(CC) $(CFLAGS) -c $(SRCS)
+.PHONY: tests
+tests: test/Makefile
+	$(MAKE) -C test
 
+.PHONY: clean
 clean:
-	rm -f $(OBJS) $(TARGET)
+	$(MAKE) -C src clean
+	$(MAKE) -C test clean
+	$(MAKE) -C modules clean

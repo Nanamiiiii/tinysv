@@ -28,11 +28,13 @@ typedef struct _module_conf {
 typedef struct _file_handler {
     char *ext;
     char *module_name;
+    u_int16_t mod_index;
 } FILE_HANDLER;
 
 typedef struct _route_handler {
     char *route;
     char *module_name;
+    u_int16_t mod_index;
 } ROUTE_HANDLER;
 
 typedef struct _config {

@@ -1,3 +1,4 @@
 tinysv
 *.o
+*.so
 .vscode

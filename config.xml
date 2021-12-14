@@ -9,7 +9,7 @@
     <Modules>
         <Module>
             <Name>default</Name>
-            <Object>default_conf.so</Object>
+            <Object>default_module.so</Object>
         </Module>
     </Modules>
     <FileHandle>

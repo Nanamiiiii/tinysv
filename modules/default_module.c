@@ -5,6 +5,8 @@
 
 #include "module.h"
 
-void tiny_main(CTX* context) {
-    
+/* Entry point: tiny_main */
+/* @ctx: request context  */
+void tiny_main(CTX* ctx) {
+    printf("Test Mod.\n");
 }

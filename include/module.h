@@ -7,7 +7,7 @@
 #include "config.h"
 
 #define MODULE_ENTRY "tiny_main"
-#define MOD_PATH_PREFIX "./modules"
+#define MOD_PATH_PREFIX "./modules/"
 #define MODULE_N 32
 
 typedef struct _mime_type {
