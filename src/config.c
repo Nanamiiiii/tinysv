@@ -121,12 +121,14 @@ static void XMLCALL elementData(void *user_data, const XML_Char *data, int size)
             config->server_conf.addr[size] = END;
             break;
         case PORT:
+        {
             char *port_s = (char *) malloc((size_t) (size + 1) * sizeof(char));
             strncpy(port_s, data, size);
             port_s[size] = END;
             config->server_conf.port = atoi(port_s);
             free(port_s);
             break;
+        }
         case ROOT:
             config->server_conf.root = (char *) malloc((size_t) (size + 1) * sizeof(char));
             strncpy(config->server_conf.root, data, size);

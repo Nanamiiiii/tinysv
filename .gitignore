@@ -2,3 +2,4 @@ tinysv
 *.o
 *.so
 .vscode
+.devcontainer
