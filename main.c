@@ -324,7 +324,7 @@ int main(int argc, char** argv) {
         logger(stdout, "Server Port: %d", sv_port);
         logger(stdout, "Module: %d", config.mod_n);
         logger(stdout, "File Handler: %d", config.fh_n);
-        logger(stdout, "ROUTE Handler: %d", config.rh_n);
+        logger(stdout, "Route Handler: %d", config.rh_n);
     }
 
     /* TODO: load modules */

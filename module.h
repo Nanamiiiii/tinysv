@@ -4,8 +4,11 @@
 #define __MODULE_H__
 
 #include "hashmap.h"
+#include "config.h"
 
 #define MODULE_ENTRY "tiny_main"
+#define MOD_PATH_PREFIX "./modules"
+#define MODULE_N 32
 
 typedef struct _mime_type {
     const char* ext;
@@ -55,5 +58,7 @@ typedef struct _context {
     int init_map;
     int map_size;
 } CTX;
+
+void load_modules(MODULE_C *module_conf, int mod_n);
 
 #endif

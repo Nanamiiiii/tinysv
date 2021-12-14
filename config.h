@@ -7,31 +7,32 @@
 #include <stdlib.h>
 
 #define CONF_FILE "config.xml"
-#define MODULE_N 32
 #define CONF_BUF 1024
 
 #define END '\0'
 
 typedef struct _server_conf {
-    char* addr;
+    char *addr;
     int port;
-    char* root;
-    char* root_file;
+    char *root;
+    char *root_file;
 } SERVER_CONF;
 
 typedef struct _module_conf {
-    char* name;
-    char* filename;
+    char *name;
+    char *filename;
+    void *handle;
+    void *entry_handle;
 } MODULE_C;
 
 typedef struct _file_handler {
-    char* ext;
-    char* module_name;
+    char *ext;
+    char *module_name;
 } FILE_HANDLER;
 
 typedef struct _route_handler {
-    char* route;
-    char* module_name;
+    char *route;
+    char *module_name;
 } ROUTE_HANDLER;
 
 typedef struct _config {
