@@ -50,7 +50,7 @@ static void XMLCALL startElement(void *user_data, const XML_Char *name, const XM
     }
 }
 
-static void XMLCALL endElement(void *user_data, const XML_Char *name, const XML_Char **attrs) {
+static void XMLCALL endElement(void *user_data, const XML_Char *name) {
     CONFIG *config = (CONFIG *) user_data;
     switch (current_tag) {
         case SERVER:
@@ -116,34 +116,56 @@ static void XMLCALL elementData(void *user_data, const XML_Char *data, int size)
     CONFIG *config = (CONFIG *) user_data;
     switch (current_tag) {
         case ADDRESS:
-            strcpy(config->server_conf.addr, data);
+            config->server_conf.addr = (char *) malloc((size_t) (size + 1) * sizeof(char));
+            strncpy(config->server_conf.addr, data, size);
+            config->server_conf.addr[size] = END;
             break;
         case PORT:
-            config->server_conf.port = atoi(data);
+            char *port_s = (char *) malloc((size_t) (size + 1) * sizeof(char));
+            strncpy(port_s, data, size);
+            port_s[size] = END;
+            config->server_conf.port = atoi(port_s);
+            free(port_s);
             break;
         case ROOT:
-            strcpy(config->server_conf.root, data);
+            config->server_conf.root = (char *) malloc((size_t) (size + 1) * sizeof(char));
+            strncpy(config->server_conf.root, data, size);
+            config->server_conf.root[size] = END;
             break;
         case ROOTFILE:
-            strcpy(config->server_conf.root_file, data);
+            config->server_conf.root_file = (char *) malloc((size_t) (size + 1) * sizeof(char));
+            strncpy(config->server_conf.root_file, data, size);
+            config->server_conf.root_file[size] = END;
             break;
         case MOD_NAME:
-            strcpy(config->module_conf[config->mod_n].name, data);
+            config->module_conf[config->mod_n].name = (char *) malloc((size_t) (size + 1) * sizeof(char));
+            strncpy(config->module_conf[config->mod_n].name, data, size);
+            config->module_conf[config->mod_n].name[size] = END;
             break;
         case MOD_OBJECT:
-            strcpy(config->module_conf[config->mod_n].filename, data);
+            config->module_conf[config->mod_n].filename = (char *) malloc((size_t) (size + 1) * sizeof(char));
+            strncpy(config->module_conf[config->mod_n].filename, data, size);
+            config->module_conf[config->mod_n].filename[size] = END;
             break;
         case MOD_NAME_FH:
-            strcpy(config->file_handler[config->fh_n].module_name, data);
+            config->file_handler[config->fh_n].module_name = (char *) malloc((size_t) (size + 1) * sizeof(char));
+            strncpy(config->file_handler[config->fh_n].module_name, data, size);
+            config->file_handler[config->fh_n].module_name[size] = END;
             break;
         case FILE_EXT:
-            strcpy(config->file_handler[config->fh_n].ext, data);
+            config->file_handler[config->fh_n].ext = (char *) malloc((size_t) (size + 1) * sizeof(char));
+            strncpy(config->file_handler[config->fh_n].ext, data, size);
+            config->file_handler[config->fh_n].ext[size] = END;
             break;
         case MOD_NAME_RH:
-            strcpy(config->route_handler[config->rh_n].module_name, data);
+            config->route_handler[config->rh_n].module_name = (char *) malloc((size_t) (size + 1) * sizeof(char));
+            strncpy(config->route_handler[config->rh_n].module_name, data, size);
+            config->route_handler[config->rh_n].module_name[size] = END;
             break;
         case ROUTE:
-            strcpy(config->route_handler[config->rh_n].route, data);
+            config->route_handler[config->rh_n].route = (char *) malloc((size_t) (size + 1) * sizeof(char));
+            strncpy(config->route_handler[config->rh_n].route, data, size);
+            config->route_handler[config->rh_n].route[size] = END;
             break;
         default:
             break;
@@ -153,7 +175,7 @@ static void XMLCALL elementData(void *user_data, const XML_Char *data, int size)
 void parse_config (CONFIG *config) {
     XML_Parser parser = XML_ParserCreate(NULL);
 
-    XML_SetUserData(parser, &config);
+    XML_SetUserData(parser, config);
     XML_SetElementHandler(parser, startElement, endElement);
     XML_SetCharacterDataHandler(parser, elementData);
 
@@ -162,10 +184,11 @@ void parse_config (CONFIG *config) {
         logger(stderr, "Cannot open config.");
         exit(1);
     }
-
+    
     char *buf = (char *) malloc((size_t) CONF_BUF * sizeof(char));
 
     ssize_t len;
+    int done;
     
     do {
         len = read(fd, buf, CONF_BUF);
@@ -174,11 +197,14 @@ void parse_config (CONFIG *config) {
             exit(1);
         }
 
-        if (XML_Parse(parser, buf, (int) len, len < CONF_BUF) == XML_STATUS_ERROR) {
+        done = len < CONF_BUF;
+
+        if (XML_Parse(parser, buf, (int) len, done) == XML_STATUS_ERROR) {
             logger(stderr, "config parse error.");
+            logger(stderr, "%s\n", XML_ErrorString(XML_GetErrorCode(parser)));
             exit(1);
         }
-    } while (!(len < CONF_BUF));
+    } while (!done);
 
     close(fd);
     XML_ParserFree(parser);

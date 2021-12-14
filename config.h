@@ -8,7 +8,9 @@
 
 #define CONF_FILE "config.xml"
 #define MODULE_N 32
-#define CONF_BUF 10240
+#define CONF_BUF 1024
+
+#define END '\0'
 
 typedef struct _server_conf {
     char* addr;

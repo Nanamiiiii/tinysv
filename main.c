@@ -250,12 +250,26 @@ void* process_request(void* args) {
 int main(int argc, char** argv) {
     char sv_addr[16];
     int sv_port = DEFAULT_PORT;
-    strcpy(sv_addr, DEFAULT_ADDR);
 
     struct sockaddr_in cli_sock_addr;
     u_int16_t cli_addr_len = sizeof cli_sock_addr;
     int cli_sock;
     pthread_t thread_id;
+
+    /* load configuration */
+    CONFIG config;
+    config.module_conf = (MODULE_C *) malloc((size_t) MODULE_N * sizeof(MODULE_C));
+    config.file_handler = (FILE_HANDLER *) malloc((size_t) MODULE_N * sizeof(FILE_HANDLER));
+    config.route_handler = (ROUTE_HANDLER *) malloc((size_t) MODULE_N * sizeof(ROUTE_HANDLER));
+    /* TODO: allocate some string mem */
+    config.mod_n = 0;
+    config.fh_n = 0;
+    config.rh_n = 0;
+    
+    parse_config(&config);
+
+    strcpy(sv_addr, config.server_conf.addr);
+    sv_port = config.server_conf.port;
 
     /* Analyzing option arguments */
     int opt;
@@ -270,16 +284,6 @@ int main(int argc, char** argv) {
         {"version", no_argument, 0, 'v'},
         {0, 0, 0, 0},
     };
-
-    /* TODO: load configuration */
-    CONFIG config;
-    config.module_conf = (MODULE_C *) malloc((size_t) MODULE_N * sizeof(MODULE_C));
-    config.file_handler = (FILE_HANDLER *) malloc((size_t) MODULE_N * sizeof(FILE_HANDLER));
-    config.route_handler = (ROUTE_HANDLER *) malloc((size_t) MODULE_N * sizeof(ROUTE_HANDLER));
-    config.mod_n = 0;
-    config.fh_n = 0;
-    config.rh_n = 0;
-    parse_config(&config);
 
     int longindex = 0;
     opterr = 0;
