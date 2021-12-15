@@ -60,5 +60,6 @@ typedef struct _context {
 } CTX;
 
 void load_modules(MODULE_C *module_conf, int mod_n);
+void module_exec(MODULE_C *module_conf, int mod_idx, CTX *ctx);
 
 #endif

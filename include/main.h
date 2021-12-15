@@ -37,6 +37,8 @@ typedef struct _cli_thread {
 
 typedef struct _thread_args {
     int cli_sock;
+    HashMap_int fh_map;
+    HashMap_int rh_map;
 } THREAD_ARGS;
 
 #endif

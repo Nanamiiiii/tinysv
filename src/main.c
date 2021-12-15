@@ -177,6 +177,11 @@ int open_svsock(char* sv_addr, int sv_port) {
     return sv_sock;
 }
 
+/* analyze path & fetch handler */
+void *fetch_handler(HTTP_REQUEST *request, MODULE_C *module_conf, HashMap_int fh_map, HashMap_int rh_map){
+    
+}
+
 /* mapping file handler */
 void map_file_handler(CONFIG* config, HashMap_int* fh_map) {
     int i, j;
@@ -269,13 +274,15 @@ HTTP_REQUEST recieve_data (int cli_sock, char* buf, u_int32_t buf_size) {
 /* processing request */
 void* process_request(void* args) {
     if (debug_flg) logger(stdout, "[Info] connection accepted.");
-
     char* recieved_buf = (char*) malloc((size_t) 8 * BUFFER_SIZE * sizeof(char));
     char* response_buf = (char*) malloc((size_t) 8 * BUFFER_SIZE * sizeof(char));
     HTTP_REQUEST request;
     request = recieve_data(((THREAD_ARGS *) args)->cli_sock, recieved_buf, 8 * BUFFER_SIZE);
 
-    
+    HashMap_int fh_map = ((THREAD_ARGS *) args)->fh_map;
+    HashMap_int rh_map = ((THREAD_ARGS *) args)->rh_map;
+
+
 }
 
 /* main function */

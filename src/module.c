@@ -43,3 +43,9 @@ void load_modules(MODULE_C *module_conf, int mod_n) {
     }
     logger(stdout, "[Info] %d modules loaded", mod_n);
 }
+
+void module_exec(MODULE_C *module_conf, int mod_idx, CTX *ctx) {
+    void (*func)(CTX *);
+    func = (void (*)(CTX *)) module_conf->entry_handle;
+    (*func)(ctx);
+}
