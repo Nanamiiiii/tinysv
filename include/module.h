@@ -57,6 +57,7 @@ typedef struct _context {
     HashMap additional;
     int init_map;
     int map_size;
+    int error;
 } CTX;
 
 void load_modules(MODULE_C *module_conf, int mod_n);

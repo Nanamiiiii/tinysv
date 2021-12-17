@@ -50,3 +50,21 @@ void* get(HashMap* hashmap, const char* key) {
     }
     return NULL;
 }
+
+void free_hashmap(HashMap *hashmap) {
+    int i;
+    Data *node = NULL;
+    for (i = 0; i < hashmap->size; i++) {
+        node = hashmap->hash_table[i];
+        while(1) {
+            Data *next = node->next;
+            free(node);
+            if (next == NULL) {
+                break;
+            } else {
+                node = next;
+            }
+        }
+    }
+    free(hashmap->hash_table);
+}

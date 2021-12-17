@@ -6,6 +6,7 @@ all:
 	$(MAKE) tinysv
 	$(MAKE) modules
 
+.PHONY: tinysv
 tinysv: src/Makefile
 	$(MAKE) -C src
 

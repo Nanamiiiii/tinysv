@@ -15,6 +15,7 @@ void init_map_int(HashMap_int* hashmap, u_int32_t size) {
     for (int i = 0; i < size; i++) {
         hashmap->hash_table[i] = (Data_int*) malloc((size_t) sizeof(Data_int));
         hashmap->hash_table[i]->key[0] = '\0';
+        hashmap->hash_table[i]->next = NULL;
     }
     hashmap->size = size;
     hashmap->amount = 0;
@@ -35,6 +36,7 @@ void store_int(HashMap_int* hashmap, const char* key, Value_int val) {
     hashmap->amount++;
     data_node->next = (Data_int*) malloc((size_t) sizeof(Data_int));
     data_node->next->key[0] = '\0';
+    data_node->next->next = NULL;
 }
 
 Value_int *get_int(HashMap_int* hashmap, const char* key) {
@@ -47,4 +49,22 @@ Value_int *get_int(HashMap_int* hashmap, const char* key) {
         data_node = data_node->next;
     }
     return NULL;
+}
+
+void free_hashmap_int(HashMap_int *hashmap) {
+    int i;
+    Data_int *node = NULL;
+    for (i = 0; i < hashmap->size; i++) {
+        node = hashmap->hash_table[i];
+        while(1) {
+            Data_int *next = node->next;
+            free(node);
+            if (next == NULL) {
+                break;
+            } else {
+                node = next;
+            }
+        }
+    }
+    free(hashmap->hash_table);
 }

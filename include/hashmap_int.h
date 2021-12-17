@@ -27,5 +27,6 @@ int gen_hash_int(HashMap_int* hashmap, const char* key);
 void init_map_int(HashMap_int* hashmap, u_int32_t size);
 void store_int(HashMap_int* hashmap, const char* key, Value_int val);
 Value_int *get_int(HashMap_int* hashmap, const char* key);
+void free_hashmap_int(HashMap_int *hashmap);
 
 #endif

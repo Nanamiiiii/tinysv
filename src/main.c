@@ -178,8 +178,47 @@ int open_svsock(char* sv_addr, int sv_port) {
 }
 
 /* analyze path & fetch handler */
-void *fetch_handler(HTTP_REQUEST *request, MODULE_C *module_conf, HashMap_int fh_map, HashMap_int rh_map){
+int execution(CTX *ctx, CONFIG *config, HashMap_int fh_map, HashMap_int rh_map){
+    char *path = ctx->request.path;
+    u_int32_t path_len = strlen(path);
+    char *def_path;
+
+    if (path[path_len - 1] == '/') {
+        def_path = (char *) malloc((size_t) (path_len + strlen(config->server_conf.root_file) + 1) * sizeof(char));
+        strcpy(def_path, path);
+        strcat(def_path, config->server_conf.root_file);
+        ctx->request.path = def_path;
+    }
     
+    int i;
+    for (i = 0; mime[i].ext != NULL; i++) {
+        if (strstr(ctx->request.path, mime[i].ext) != NULL) break;
+    }
+
+    if (mime[i].ext == NULL) {
+        /* fetch handler from route handler list */
+        int *handle_idx = get_int(&rh_map, ctx->request.path);
+        if (handle_idx == NULL) {
+            logger(stderr, "[Error] cannot fetch handler");
+            return -1;
+        }
+        if (debug_flg) {
+            logger(stdout, "[Debug] Handler fetched: %s", config->module_conf[*handle_idx].name);
+        }
+        module_exec(config->module_conf, *handle_idx, ctx);
+    } else {
+        /* fetch handler from file handler list */
+        int *handle_idx = get_int(&fh_map, mime[i].ext);
+        if (handle_idx == NULL) {
+            logger(stderr, "[Error] cannot fetch handler.");
+            return -1;
+        }
+        if (debug_flg) {
+            logger(stdout, "[Debug] Handler fetched: %s", config->module_conf[*handle_idx].name);
+        }
+        module_exec(config->module_conf, *handle_idx, ctx);
+    }
+    return ctx->error;
 }
 
 /* mapping file handler */
@@ -237,7 +276,7 @@ void parse_http_request(HTTP_REQUEST* request, char* buf) {
     tmp = strtok(NULL, LF);
     header = (char *) malloc((size_t) 4 * BUFFER_SIZE * sizeof(char));
     while (tmp[0] != '\r') { // roop for request header
-        sprintf(header, "%s%s", header, tmp);
+        strcat(header, tmp);
         tmp = strtok(NULL, LF);
     }
     body = strtok(NULL, "\0");
@@ -253,7 +292,10 @@ void parse_http_request(HTTP_REQUEST* request, char* buf) {
         store(&request->header, key, val);
     } while ((key = strtok(NULL, ":")) != NULL);
 
+    request->body = (char *) malloc((size_t) 4 * BUFFER_SIZE * sizeof(char));
     strcpy(request->body, body);
+
+    free(header);
 }
 
 /* recieving data */
@@ -272,7 +314,7 @@ HTTP_REQUEST recieve_data (int cli_sock, char* buf, u_int32_t buf_size) {
 }
 
 /* processing request */
-void* process_request(void* args) {
+void process_request(void* args) {
     if (debug_flg) logger(stdout, "[Info] connection accepted.");
     char* recieved_buf = (char*) malloc((size_t) 8 * BUFFER_SIZE * sizeof(char));
     char* response_buf = (char*) malloc((size_t) 8 * BUFFER_SIZE * sizeof(char));
@@ -281,8 +323,51 @@ void* process_request(void* args) {
 
     HashMap_int fh_map = ((THREAD_ARGS *) args)->fh_map;
     HashMap_int rh_map = ((THREAD_ARGS *) args)->rh_map;
+    CONFIG config = ((THREAD_ARGS *) args)->config;
 
+    CTX ctx;
+    ctx.request = request;
+    ctx.init_map = 0;
+    ctx.map_size = 0;
+    ctx.error = 0;
 
+    execution(&ctx, &config, fh_map, rh_map);
+
+    /* TODO: output information */
+
+    /* format and send response */
+    strncat(response_buf, "HTTP/1.1 ", 9);
+    char status_code[10];
+    sprintf(status_code, "%d ", ctx.response.status.code);
+    strcat(response_buf, status_code);
+    strcat(response_buf, ctx.response.status.str);
+    strcat(response_buf, CRLF);
+
+    int i;
+    Data *node;
+    for (i = 0; i < ctx.response.header.size; i++) {
+        node = ctx.response.header.hash_table[i];
+        while (node->key[0] != '\0') {
+            strcat(response_buf, node->key);
+            strcat(response_buf, ": ");
+            strcat(response_buf, node->val);
+            strcat(response_buf, CRLF);
+        }
+    }
+    strcat(response_buf, CRLF);
+    strcat(response_buf, ctx.response.body);
+
+    send(((THREAD_ARGS *) args)->cli_sock, response_buf, strlen(response_buf), 0);
+
+    /* free memory */
+    free(recieved_buf);
+    free(response_buf);
+    free(ctx.request.path);
+    free(ctx.request.body);
+    free_hashmap(&ctx.request.header);
+    free(ctx.response.body);
+    free_hashmap(&ctx.response.header);
+    if (ctx.init_map) free_hashmap(&ctx.additional);
 }
 
 /* main function */
@@ -400,7 +485,7 @@ int main(int argc, char** argv) {
 
     logger(stdout, "[Info] max thread: %d", proc_num);
 
-    // TODO: accepting and thread creation
+    // accepting and thread creation
     while (!interrupted_flag) {
         cli_sock = accept(sv_sock, (struct sockaddr *) &cli_sock_addr, (socklen_t*) &cli_addr_len);
         if (client_cnt == proc_num) { // Threads limitation
@@ -408,6 +493,15 @@ int main(int argc, char** argv) {
             close(cli_sock);
             continue;
         }
+
+        /* setup thread arguments */
+        THREAD_ARGS args;
+        args.cli_sock = cli_sock;
+        args.fh_map = fh_map;
+        args.rh_map = rh_map;
+        args.config = config;
+
+        /* create thread */
     }
 
     // TODO: exiting process
