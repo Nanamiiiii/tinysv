@@ -296,7 +296,7 @@ void parse_http_request(HTTP_REQUEST* request, char* buf) {
     } while ((key = strtok(NULL, ":")) != NULL);
     request->body = (char *) malloc((size_t) 4 * BUFFER_SIZE * sizeof(char));
     if (body != NULL) strcpy(request->body, body);
-    free(header);
+    _FREE(header);
 }
 
 /* recieving data */
@@ -327,7 +327,8 @@ void *process_request(void* args) {
     CTX ctx;
     HTTP_REQUEST request;
     Data *node;
-    
+    char status_code[10];
+
     int cli_sock;
     int sv_sock = ((THREAD_ARGS *) args)->sv_sock;
     HashMap_int fh_map = ((THREAD_ARGS *) args)->fh_map;
@@ -380,7 +381,7 @@ void *process_request(void* args) {
 
         if (debug_flg)
             logger(stdout, "[Debug] Status: %d", status_map[i].code);
-        char status_code[10];
+        
         sprintf(status_code, "%d ", status_map[i].code);
         strcat(response_buf, status_code);
         strcat(response_buf, status_map[i].str);
