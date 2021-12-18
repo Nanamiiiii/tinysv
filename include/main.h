@@ -31,6 +31,15 @@
 #define BUFFER_SIZE 1024
 #define MAX_THREAD 5
 
+#ifndef __FREE__
+#define __FREE__
+#define _FREE(ptr) { \
+    free(ptr); \
+    ptr = NULL; \
+} \
+
+#endif
+
 typedef struct _thread_args {
     int sv_sock;
     HashMap_int fh_map;

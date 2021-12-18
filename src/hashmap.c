@@ -16,6 +16,7 @@ void init_map(HashMap* hashmap, u_int32_t size) {
         hashmap->hash_table[i] = (Data *) malloc((size_t) sizeof(Data));
         hashmap->hash_table[i]->key[0] = '\0';
         hashmap->hash_table[i]->val[0] = '\0';
+        hashmap->hash_table[i]->next = NULL;
     }
     hashmap->size = size;
     hashmap->amount = 0;
@@ -58,7 +59,7 @@ void free_hashmap(HashMap *hashmap) {
         node = hashmap->hash_table[i];
         while(1) {
             Data *next = node->next;
-            free(node);
+            _FREE(node);
             if (next == NULL) {
                 break;
             } else {
@@ -66,5 +67,5 @@ void free_hashmap(HashMap *hashmap) {
             }
         }
     }
-    free(hashmap->hash_table);
+    _FREE(hashmap->hash_table);
 }

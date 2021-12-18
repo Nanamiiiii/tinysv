@@ -7,8 +7,9 @@
 #include "config.h"
 
 #define MODULE_ENTRY "__handler"
-#define MOD_PATH_PREFIX "./modules/"
+#define MOD_PATH_PREFIX "./modules/" 
 #define MODULE_N 32
+#define FILE_BUF 1024
 
 typedef struct _mime_type {
     const char* ext;
@@ -46,7 +47,7 @@ typedef struct _http_status {
 } HTTP_STATUS;
 
 typedef struct _http_response {
-    HTTP_STATUS status;
+    u_int16_t status;
     HashMap header;
     char* body;
 } HTTP_RESPONSE;
@@ -58,6 +59,7 @@ typedef struct _context {
     int init_map;
     int map_size;
     int error;
+    int debug;
 } CTX;
 
 void load_modules(MODULE_C *module_conf, int mod_n);

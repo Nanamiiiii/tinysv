@@ -8,7 +8,17 @@
 #include <string.h>
 
 #define KEY_LENGTH 128
-#define VAL_LENGTH 128
+#define VAL_LENGTH 256
+
+#ifndef __FREE__
+#define __FREE__
+#define _FREE(ptr) { \
+    printf("%p\n", ptr); \
+    free(ptr); \
+    ptr = NULL; \
+} \
+
+#endif
 
 typedef char Value;
 

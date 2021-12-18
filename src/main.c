@@ -86,6 +86,7 @@ HTTP_STATUS status_map[] = {
     { 508, "Loop Detected" },
     { 510, "Not Extended" },
     { 511, "Network Authentication Required" },
+    { 0, NULL },
 };
 
 /* output functions */
@@ -177,16 +178,18 @@ int open_svsock(char* sv_addr, int sv_port) {
 
 /* analyze path & fetch handler */
 int execution(CTX *ctx, CONFIG *config, HashMap_int fh_map, HashMap_int rh_map){
+    if (debug_flg) logger(stdout, "[Debug] execution");
+
     char *path = ctx->request.path;
     u_int32_t path_len = strlen(path);
     char *def_path;
-
+    def_path = (char *) malloc((size_t) (path_len + strlen(config->server_conf.root) + strlen(config->server_conf.root_file) + 1) * sizeof(char));
+    strcpy(def_path, config->server_conf.root);
+    strcat(def_path, path);
     if (path[path_len - 1] == '/') {
-        def_path = (char *) malloc((size_t) (path_len + strlen(config->server_conf.root_file) + 1) * sizeof(char));
-        strcpy(def_path, path);
         strcat(def_path, config->server_conf.root_file);
-        ctx->request.path = def_path;
     }
+    ctx->request.path = def_path;
     
     int i;
     for (i = 0; mime[i].ext != NULL; i++) {
@@ -198,6 +201,7 @@ int execution(CTX *ctx, CONFIG *config, HashMap_int fh_map, HashMap_int rh_map){
         int *handle_idx = get_int(&rh_map, ctx->request.path);
         if (handle_idx == NULL) {
             logger(stderr, "[Error] cannot fetch handler");
+            ctx->response.status = 404;
             return -1;
         }
         if (debug_flg) {
@@ -209,6 +213,7 @@ int execution(CTX *ctx, CONFIG *config, HashMap_int fh_map, HashMap_int rh_map){
         int *handle_idx = get_int(&fh_map, mime[i].ext);
         if (handle_idx == NULL) {
             logger(stderr, "[Error] cannot fetch handler.");
+            ctx->response.status = 404;
             return -1;
         }
         if (debug_flg) {
@@ -269,16 +274,16 @@ HTTP_METHOD fetch_method(const char* str) {
 /* parse request */
 void parse_http_request(HTTP_REQUEST* request, char* buf) {
     char *req_line, *header, *body, *tmp;
-
     req_line = strtok(buf, LF); // Read firstline
     tmp = strtok(NULL, LF);
     header = (char *) malloc((size_t) 4 * BUFFER_SIZE * sizeof(char));
+    
     while (tmp[0] != '\r') { // roop for request header
         strcat(header, tmp);
         tmp = strtok(NULL, LF);
     }
-    body = strtok(NULL, "\0");
 
+    body = strtok(NULL, "\0");
     request->request_method = fetch_method(strtok(req_line, " "));
     request->path = strtok(NULL, " ");
 
@@ -289,10 +294,8 @@ void parse_http_request(HTTP_REQUEST* request, char* buf) {
         val = strtok(NULL, CR);
         store(&request->header, key, val);
     } while ((key = strtok(NULL, ":")) != NULL);
-
     request->body = (char *) malloc((size_t) 4 * BUFFER_SIZE * sizeof(char));
-    strcpy(request->body, body);
-
+    if (body != NULL) strcpy(request->body, body);
     free(header);
 }
 
@@ -308,6 +311,9 @@ HTTP_REQUEST recieve_data (int cli_sock, char* buf, u_int32_t buf_size) {
         logger(stdout, "[Debug] recieved request\n%s", buf);
     
     parse_http_request(&request, buf);
+
+    if (debug_flg)
+        logger(stdout, "[Debug] request parsed");
     return request;
 }
 
@@ -335,8 +341,8 @@ void *process_request(void* args) {
         pthread_mutex_unlock(&mutex);
 
         if (debug_flg) logger(stdout, "[Info] connection accepted.");
-        char* recieved_buf = (char*) malloc((size_t) 8 * BUFFER_SIZE * sizeof(char));
-        char* response_buf = (char*) malloc((size_t) 8 * BUFFER_SIZE * sizeof(char));
+        char* recieved_buf = (char *) malloc((size_t) 8 * BUFFER_SIZE * sizeof(char));
+        char* response_buf = (char *) malloc((size_t) 8 * BUFFER_SIZE * sizeof(char));
         HTTP_REQUEST request;
         request = recieve_data(cli_sock, recieved_buf, 8 * BUFFER_SIZE);
 
@@ -345,20 +351,36 @@ void *process_request(void* args) {
         ctx.init_map = 0;
         ctx.map_size = 0;
         ctx.error = 0;
+        ctx.debug = debug_flg;
 
         execution(&ctx, &config, fh_map, rh_map);
-
         /* TODO: output information */
 
         /* format and send response */
+        if (debug_flg)
+            logger(stdout, "[Debug] formatting response");
         strncat(response_buf, "HTTP/1.1 ", 9);
-        char status_code[10];
-        sprintf(status_code, "%d ", ctx.response.status.code);
-        strcat(response_buf, status_code);
-        strcat(response_buf, ctx.response.status.str);
-        strcat(response_buf, CRLF);
-
         int i;
+        for(i = 0; status_map[i].str != NULL; i++) {
+            if (status_map[i].code == ctx.response.status) {
+                break;
+            }
+        }
+
+        if (status_map[i].str == NULL) {
+            logger(stderr, "[Error] invalid status");
+            logger(stderr, "exitting...");
+            exit(1);
+        }
+
+        if (debug_flg)
+            logger(stdout, "[Debug] Status: %d", status_map[i].code);
+        char status_code[10];
+        sprintf(status_code, "%d ", status_map[i].code);
+        strcat(response_buf, status_code);
+        strcat(response_buf, status_map[i].str);
+        strcat(response_buf, CRLF);
+        
         Data *node;
         for (i = 0; i < ctx.response.header.size; i++) {
             node = ctx.response.header.hash_table[i];
@@ -367,22 +389,26 @@ void *process_request(void* args) {
                 strcat(response_buf, ": ");
                 strcat(response_buf, node->val);
                 strcat(response_buf, CRLF);
+                node = node->next;
             }
         }
+
         strcat(response_buf, CRLF);
-        strcat(response_buf, ctx.response.body);
+        if (ctx.response.body != NULL) strcat(response_buf, ctx.response.body);
         send(cli_sock, response_buf, strlen(response_buf), 0);
 
         /* close connection */
         close(cli_sock);
 
         /* free memory */
-        free(recieved_buf);
-        free(response_buf);
-        free(ctx.request.path);
-        free(ctx.request.body);
+        if (debug_flg)
+            logger(stdout, "[Debug] clearing memory");
+        _FREE(recieved_buf);
+        _FREE(response_buf);
+        _FREE(ctx.request.path);
+        _FREE(ctx.request.body);
         free_hashmap(&ctx.request.header);
-        free(ctx.response.body);
+        _FREE(ctx.response.body);
         free_hashmap(&ctx.response.header);
         if (ctx.init_map) free_hashmap(&ctx.additional);
     }
@@ -520,7 +546,7 @@ int main(int argc, char** argv) {
     logger(stdout, "[Info] running in %d threads", proc_num);
 
     while (!interrupted_flag);
-    
+
     /* exiting process */
     fprintf(stderr, "keyboard interruption!\n");
     for (i = 0; i < proc_num; i++) {
