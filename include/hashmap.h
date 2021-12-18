@@ -13,7 +13,6 @@
 #ifndef __FREE__
 #define __FREE__
 #define _FREE(ptr) { \
-    printf("%p\n", ptr); \
     free(ptr); \
     ptr = NULL; \
 } \
@@ -23,8 +22,8 @@
 typedef char Value;
 
 typedef struct _data {
-    char key[KEY_LENGTH];
-    Value val[VAL_LENGTH];
+    char *key;
+    Value *val;
     struct _data* next;
 } Data;
 

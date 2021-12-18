@@ -10,7 +10,6 @@
 TAGS current_tag = INIT;
 
 static void XMLCALL startElement(void *user_data, const XML_Char *name, const XML_Char **attrs) {
-    CONFIG *config = (CONFIG *) user_data;
     switch (current_tag) {
         case INIT:
             if (!strcmp(name, "Server")) current_tag = SERVER;

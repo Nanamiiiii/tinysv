@@ -14,8 +14,8 @@ void init_map(HashMap* hashmap, u_int32_t size) {
     hashmap->hash_table = (Data **) calloc(size, sizeof(Data *));
     for (int i = 0; i < size; i++) {
         hashmap->hash_table[i] = (Data *) malloc((size_t) sizeof(Data));
-        hashmap->hash_table[i]->key[0] = '\0';
-        hashmap->hash_table[i]->val[0] = '\0';
+        hashmap->hash_table[i]->key = (char *) calloc(KEY_LENGTH, sizeof(char));
+        hashmap->hash_table[i]->val = (char *) calloc(VAL_LENGTH, sizeof(char));
         hashmap->hash_table[i]->next = NULL;
     }
     hashmap->size = size;
@@ -25,7 +25,7 @@ void init_map(HashMap* hashmap, u_int32_t size) {
 void store(HashMap* hashmap, const char* key, void *val) {
     int hash = gen_hash(hashmap, key);
     Data* data_node = hashmap->hash_table[hash];
-    while (data_node->key[0] != '\0') {
+    while (data_node->next != NULL) {
         if (!strcmp(data_node->key, key)) { // update exist key's value
             strcpy(data_node->val, (Value *) val);
             return;
@@ -36,14 +36,15 @@ void store(HashMap* hashmap, const char* key, void *val) {
     strcpy(data_node->val, (Value *) val);
     hashmap->amount++;
     data_node->next = (Data *) malloc((size_t) sizeof(Data));
-    data_node->next->key[0] = '\0';
-    data_node->next->val[0] = '\0';
+    data_node->next->key = (char *) calloc(KEY_LENGTH, sizeof(char));
+    data_node->next->val = (char *) calloc(VAL_LENGTH, sizeof(char));
+    data_node->next->next = NULL;
 }
 
 void* get(HashMap* hashmap, const char* key) {
     int hash = gen_hash(hashmap, key);
     Data* data_node = hashmap->hash_table[hash];
-    while (data_node->key[0] != '\0') {
+    while (data_node->next != NULL) {
         if (!strcmp(data_node->key, key)) {
             return data_node->val;
         }
@@ -59,6 +60,8 @@ void free_hashmap(HashMap *hashmap) {
         node = hashmap->hash_table[i];
         while(1) {
             Data *next = node->next;
+            _FREE(node->key);
+            _FREE(node->val);
             _FREE(node);
             if (next == NULL) {
                 break;

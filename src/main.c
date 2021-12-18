@@ -322,6 +322,12 @@ void *process_request(void* args) {
     struct sockaddr_in cli_sock_addr;
     u_int16_t cli_addr_len = sizeof cli_sock_addr;
 
+    int i;
+
+    CTX ctx;
+    HTTP_REQUEST request;
+    Data *node;
+    
     int cli_sock;
     int sv_sock = ((THREAD_ARGS *) args)->sv_sock;
     HashMap_int fh_map = ((THREAD_ARGS *) args)->fh_map;
@@ -343,10 +349,9 @@ void *process_request(void* args) {
         if (debug_flg) logger(stdout, "[Info] connection accepted.");
         char* recieved_buf = (char *) malloc((size_t) 8 * BUFFER_SIZE * sizeof(char));
         char* response_buf = (char *) malloc((size_t) 8 * BUFFER_SIZE * sizeof(char));
-        HTTP_REQUEST request;
+        
         request = recieve_data(cli_sock, recieved_buf, 8 * BUFFER_SIZE);
 
-        CTX ctx;
         ctx.request = request;
         ctx.init_map = 0;
         ctx.map_size = 0;
@@ -360,7 +365,7 @@ void *process_request(void* args) {
         if (debug_flg)
             logger(stdout, "[Debug] formatting response");
         strncat(response_buf, "HTTP/1.1 ", 9);
-        int i;
+
         for(i = 0; status_map[i].str != NULL; i++) {
             if (status_map[i].code == ctx.response.status) {
                 break;
@@ -381,7 +386,6 @@ void *process_request(void* args) {
         strcat(response_buf, status_map[i].str);
         strcat(response_buf, CRLF);
         
-        Data *node;
         for (i = 0; i < ctx.response.header.size; i++) {
             node = ctx.response.header.hash_table[i];
             while (node->key[0] != '\0') {
@@ -412,6 +416,7 @@ void *process_request(void* args) {
         free_hashmap(&ctx.response.header);
         if (ctx.init_map) free_hashmap(&ctx.additional);
     }
+
     return (void *)0;
 }
 
