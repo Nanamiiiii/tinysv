@@ -4,9 +4,7 @@
 
 volatile int interrupted_flag = 0;
 int debug_flg = 0;
-
-static _Atomic unsigned int client_cnt = 0;
-pthread_mutex_t client_mutex = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 
 MIME_TYPE mime[] = {
     { ".html", "text/html" },
@@ -314,71 +312,87 @@ HTTP_REQUEST recieve_data (int cli_sock, char* buf, u_int32_t buf_size) {
 }
 
 /* processing request */
-void process_request(void* args) {
-    if (debug_flg) logger(stdout, "[Info] connection accepted.");
-    char* recieved_buf = (char*) malloc((size_t) 8 * BUFFER_SIZE * sizeof(char));
-    char* response_buf = (char*) malloc((size_t) 8 * BUFFER_SIZE * sizeof(char));
-    HTTP_REQUEST request;
-    request = recieve_data(((THREAD_ARGS *) args)->cli_sock, recieved_buf, 8 * BUFFER_SIZE);
+void *process_request(void* args) {
+    struct sockaddr_in cli_sock_addr;
+    u_int16_t cli_addr_len = sizeof cli_sock_addr;
 
+    int cli_sock;
+    int sv_sock = ((THREAD_ARGS *) args)->sv_sock;
     HashMap_int fh_map = ((THREAD_ARGS *) args)->fh_map;
     HashMap_int rh_map = ((THREAD_ARGS *) args)->rh_map;
     CONFIG config = ((THREAD_ARGS *) args)->config;
 
-    CTX ctx;
-    ctx.request = request;
-    ctx.init_map = 0;
-    ctx.map_size = 0;
-    ctx.error = 0;
-
-    execution(&ctx, &config, fh_map, rh_map);
-
-    /* TODO: output information */
-
-    /* format and send response */
-    strncat(response_buf, "HTTP/1.1 ", 9);
-    char status_code[10];
-    sprintf(status_code, "%d ", ctx.response.status.code);
-    strcat(response_buf, status_code);
-    strcat(response_buf, ctx.response.status.str);
-    strcat(response_buf, CRLF);
-
-    int i;
-    Data *node;
-    for (i = 0; i < ctx.response.header.size; i++) {
-        node = ctx.response.header.hash_table[i];
-        while (node->key[0] != '\0') {
-            strcat(response_buf, node->key);
-            strcat(response_buf, ": ");
-            strcat(response_buf, node->val);
-            strcat(response_buf, CRLF);
+    pthread_detach(pthread_self());
+    
+    while(1) {
+        pthread_mutex_lock(&mutex);
+        cli_sock = accept(sv_sock, (struct sockaddr *) &cli_sock_addr, (socklen_t*) &cli_addr_len);
+        if (cli_sock < 0) {
+            logger(stderr, "[Error] connot accept connection");
+            pthread_mutex_unlock(&mutex);
+            continue;
         }
+        pthread_mutex_unlock(&mutex);
+
+        if (debug_flg) logger(stdout, "[Info] connection accepted.");
+        char* recieved_buf = (char*) malloc((size_t) 8 * BUFFER_SIZE * sizeof(char));
+        char* response_buf = (char*) malloc((size_t) 8 * BUFFER_SIZE * sizeof(char));
+        HTTP_REQUEST request;
+        request = recieve_data(cli_sock, recieved_buf, 8 * BUFFER_SIZE);
+
+        CTX ctx;
+        ctx.request = request;
+        ctx.init_map = 0;
+        ctx.map_size = 0;
+        ctx.error = 0;
+
+        execution(&ctx, &config, fh_map, rh_map);
+
+        /* TODO: output information */
+
+        /* format and send response */
+        strncat(response_buf, "HTTP/1.1 ", 9);
+        char status_code[10];
+        sprintf(status_code, "%d ", ctx.response.status.code);
+        strcat(response_buf, status_code);
+        strcat(response_buf, ctx.response.status.str);
+        strcat(response_buf, CRLF);
+
+        int i;
+        Data *node;
+        for (i = 0; i < ctx.response.header.size; i++) {
+            node = ctx.response.header.hash_table[i];
+            while (node->key[0] != '\0') {
+                strcat(response_buf, node->key);
+                strcat(response_buf, ": ");
+                strcat(response_buf, node->val);
+                strcat(response_buf, CRLF);
+            }
+        }
+        strcat(response_buf, CRLF);
+        strcat(response_buf, ctx.response.body);
+        send(cli_sock, response_buf, strlen(response_buf), 0);
+
+        /* close connection */
+        close(cli_sock);
+
+        /* free memory */
+        free(recieved_buf);
+        free(response_buf);
+        free(ctx.request.path);
+        free(ctx.request.body);
+        free_hashmap(&ctx.request.header);
+        free(ctx.response.body);
+        free_hashmap(&ctx.response.header);
+        if (ctx.init_map) free_hashmap(&ctx.additional);
     }
-    strcat(response_buf, CRLF);
-    strcat(response_buf, ctx.response.body);
-
-    send(((THREAD_ARGS *) args)->cli_sock, response_buf, strlen(response_buf), 0);
-
-    /* free memory */
-    free(recieved_buf);
-    free(response_buf);
-    free(ctx.request.path);
-    free(ctx.request.body);
-    free_hashmap(&ctx.request.header);
-    free(ctx.response.body);
-    free_hashmap(&ctx.response.header);
-    if (ctx.init_map) free_hashmap(&ctx.additional);
+    return (void *)0;
 }
 
 /* main function */
 int main(int argc, char** argv) {
     char sv_addr[16];
     int sv_port = DEFAULT_PORT;
-
-    struct sockaddr_in cli_sock_addr;
-    u_int16_t cli_addr_len = sizeof cli_sock_addr;
-    int cli_sock;
-    pthread_t thread_id;
 
     print_AA();
 
@@ -483,28 +497,34 @@ int main(int argc, char** argv) {
         exit(-1);
     }
 
-    logger(stdout, "[Info] max thread: %d", proc_num);
+    pthread_t *threads = (pthread_t *) malloc((size_t) proc_num * sizeof(pthread_t));
 
-    // accepting and thread creation
-    while (!interrupted_flag) {
-        cli_sock = accept(sv_sock, (struct sockaddr *) &cli_sock_addr, (socklen_t*) &cli_addr_len);
-        if (client_cnt == proc_num) { // Threads limitation
-            logger(stdout, "Client limit. Access rejected. [from] %s:%d", fmt_client_addr(cli_sock_addr), cli_sock_addr.sin_port);
-            close(cli_sock);
-            continue;
+    /* setup thread arguments */
+    THREAD_ARGS args;
+    args.sv_sock = sv_sock;
+    args.fh_map = fh_map;
+    args.rh_map = rh_map;
+    args.config = config;
+
+    /* thread creation */
+    int i;
+    for (i = 0; i < proc_num; i++) {
+        if (pthread_create(&threads[i], NULL, process_request, (void *) &args) < 0) {
+            logger(stderr, "[Error] cannot create thread");
+            exit(1);
         }
-
-        /* setup thread arguments */
-        THREAD_ARGS args;
-        args.cli_sock = cli_sock;
-        args.fh_map = fh_map;
-        args.rh_map = rh_map;
-        args.config = config;
-
-        /* create thread */
+        if (debug_flg) {
+            logger(stdout, "[Debug] created thread-%d id:%lu", i, threads[i]);
+        }
     }
+    logger(stdout, "[Info] running in %d threads", proc_num);
 
-    // TODO: exiting process
-
+    while (!interrupted_flag);
+    
+    /* exiting process */
+    fprintf(stderr, "keyboard interruption!\n");
+    for (i = 0; i < proc_num; i++) {
+        pthread_kill(threads[i], SIGINT);
+    }
     close(sv_sock);
 }

@@ -29,14 +29,10 @@
 
 #define QUEUE_SIZE 1024
 #define BUFFER_SIZE 1024
-#define MAX_THREAD 10
-
-typedef struct _cli_thread {
-
-} CLI_THREAD;
+#define MAX_THREAD 5
 
 typedef struct _thread_args {
-    int cli_sock;
+    int sv_sock;
     HashMap_int fh_map;
     HashMap_int rh_map;
     CONFIG config;
