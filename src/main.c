@@ -328,6 +328,7 @@ void *process_request(void* args) {
     HTTP_REQUEST request;
     Data *node;
     char status_code[10];
+    char *cli_addr;
 
     int cli_sock;
     int sv_sock = ((THREAD_ARGS *) args)->sv_sock;
@@ -360,7 +361,11 @@ void *process_request(void* args) {
         ctx.debug = debug_flg;
 
         execution(&ctx, &config, fh_map, rh_map);
-        /* TODO: output information */
+
+        /* output information */
+        cli_addr = fmt_client_addr(cli_sock_addr);
+        logger(stdout,"|%d|\t%s|%s\t%s", ctx.response.status, cli_addr, method_map[ctx.request.request_method].str, ctx.request.path);
+        _FREE(cli_addr);
 
         /* format and send response */
         if (debug_flg)

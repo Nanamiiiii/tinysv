@@ -35,10 +35,12 @@ void __handler(CTX* ctx) {
                     ctx->error = -1;
                     return;
                 }
-            }
-            if (ctx->debug) 
+            } else {
+                ctx->response.status = 200;
+                if (ctx->debug) 
                     logger(stdout, "[Debug] retrived file: %s", ctx->request.path);
-            ctx->response.status = 200;
+            }
+            
             do {
                 len = read(fd, buf, FILE_BUF);
                 strcat(ctx->response.body, buf);
