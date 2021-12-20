@@ -97,3 +97,7 @@ void __handler(CTX* ctx) {
     - this struct has request information and additional data.
     - modules should set response information to this.
 - To use external libraries, you must modify `Makefile`.
+
+## Known issues
+- Segmentation fault when running for long time.
+- This server close connection after sending response, but it shuld be kept.
