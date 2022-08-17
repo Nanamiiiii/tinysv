@@ -4,3 +4,4 @@ tinysv
 .vscode
 .devcontainer
 .DS_Store
+/build
