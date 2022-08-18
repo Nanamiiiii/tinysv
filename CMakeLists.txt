@@ -1,7 +1,7 @@
 ### Build tinysv ###
 cmake_minimum_required(VERSION 3.21)
 project(tinysv 
-    VERSION 0.2.0-dev
+    VERSION 0.2.0
     DESCRIPTION "A minimal extensive webserver"
     LANGUAGES C)
 
@@ -11,7 +11,8 @@ configure_file(${PROJECT_SOURCE_DIR}/include/version.h.in ${PROJECT_SOURCE_DIR}/
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/tinysv)
 
 # copy config & templates
-file(COPY ${CMAKE_SOURCE_DIR}/template DESTINATION ${CMAKE_BINARY_DIR}/tinysv)
+file(COPY ${CMAKE_SOURCE_DIR}/sample/www DESTINATION ${CMAKE_BINARY_DIR}/tinysv)
+file(COPY ${CMAKE_SOURCE_DIR}/sample/template DESTINATION ${CMAKE_BINARY_DIR}/tinysv)
 file(COPY_FILE ${CMAKE_SOURCE_DIR}/config/default.xml ${CMAKE_BINARY_DIR}/tinysv/config.xml)
 
 # collect source files
@@ -36,3 +37,4 @@ target_link_libraries(tinysv PRIVATE dl)
 
 # subdirectory
 add_subdirectory(modules)
+
