@@ -4,7 +4,6 @@
 #define __MAIN_H__
 
 #include "hashmap.h"
-#include "hashmap_int.h"
 #include "logger.h"
 #include "module.h"
 #include "config.h"
