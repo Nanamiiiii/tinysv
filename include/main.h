@@ -1,4 +1,5 @@
-/* main.h */
+/* main.h 
+ */
 
 #ifndef __MAIN_H__
 #define __MAIN_H__
@@ -7,6 +8,7 @@
 #include "logger.h"
 #include "module.h"
 #include "config.h"
+#include "types.h"
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>

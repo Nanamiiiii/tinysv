@@ -1,4 +1,5 @@
-/* config.c */
+/* config.c 
+ */
 
 #include "config.h"
 #include "module.h"
