@@ -1,6 +1,7 @@
 /* main.c */
 
 #include "main.h"
+#include "version.h"
 
 volatile int interrupted_flag = 0;
 int debug_flg = 0;

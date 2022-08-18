@@ -1,9 +1,12 @@
 ### Build tinysv ###
 cmake_minimum_required(VERSION 3.21)
 project(tinysv 
-    VERSION 0.1.1
+    VERSION 0.2.0-dev
     DESCRIPTION "A minimal extensive webserver"
     LANGUAGES C)
+
+set(VERSION ${CMAKE_PROJECT_VERSION})
+configure_file(${PROJECT_SOURCE_DIR}/include/version.h.in ${PROJECT_SOURCE_DIR}/include/version.h)
 
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/tinysv)
 

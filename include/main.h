@@ -19,8 +19,6 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 
-#define VERSION "0.0.1"
-
 #define DEFAULT_ADDR "0.0.0.0"
 #define DEFAULT_PORT 5000
 #define CRLF "\r\n"
