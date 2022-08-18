@@ -1,15 +1,19 @@
-/* default_module.c */
+/* default_module.c 
+ */
 
-/* This is the sample module of tinysv */
-/* This module handles GET Request.    */
+/* 
+ *  This is the sample module of tinysv 
+ *  This module handles GET Request.    
+ */
 
 #include "module.h"
 #include "logger.h"
+#include "types.h"
 #include <fcntl.h>
 #include <unistd.h>
 
-/* Entry point: __handler */
-/* @ctx: request context  */
+/* Entry point: __handler 
+   @ctx: request context  */
 void __handler(CTX* ctx) {
     int fd;
     ssize_t len;

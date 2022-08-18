@@ -3,40 +3,38 @@ A minimal extensive server
 
 ![ScreenShot](./res/SS1.png)
 
-## Build
-Only tested on Linux based OS. 
-### Dependencies
+## Dependencies
 - gcc
+- CMake (>= 3.21)
 - libexpat
 
+## Build 
 ### All binary & modules
 ```
 git clone https://github.com/Nanamiiiii/tinysv.git
 cd tinysv
+mkdir build && cd build
+cmake ..
+make
+```
+outputs are stored in `build/tinysv`
+
+### build only modules
+tinysv can expand functionality. For detail, look modules section.  
+You must modify `CMakeLists.txt` for modules.
+
+```
+cd modules
+mkdir build && cd build
+cmake ..
 make
 ```
 
-### build only server binary
-```
-make tinysv
-```
-
-### build only modules
-tinysv can expand functionality. For detail, look modules section.
-```
-make modules
-```
-
-### build test code
-this is for testing some library in tinysv
-```
-make tests
-```
-
 ## Usage
-```
-./tinysv
-./tinysv --help (For more information)
+```bash
+./tinysv --server 0.0.0.0 --port 8080 # specify address & port
+./tinysv --thread 3 # specify number of thread
+./tinysv --help # For more information
 ```
 
 ## Configuration

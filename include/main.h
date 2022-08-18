@@ -1,13 +1,14 @@
-/* main.h */
+/* main.h 
+ */
 
 #ifndef __MAIN_H__
 #define __MAIN_H__
 
 #include "hashmap.h"
-#include "hashmap_int.h"
 #include "logger.h"
 #include "module.h"
 #include "config.h"
+#include "types.h"
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
@@ -18,8 +19,6 @@
 #include <netinet/tcp.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
-
-#define VERSION "0.0.1"
 
 #define DEFAULT_ADDR "0.0.0.0"
 #define DEFAULT_PORT 5000

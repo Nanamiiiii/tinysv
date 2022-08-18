@@ -1,4 +1,5 @@
-/* module.c */
+/* module.c 
+ */
 
 #include "module.h"
 #include "logger.h"
